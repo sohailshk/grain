@@ -290,6 +290,23 @@ class ElasticMapDatasetTest(parameterized.TestCase):
     ):
       elastic_iterator.ElasticIterator(ds, 5, sharding.NoSharding()).__iter__()
 
+  @parameterized.parameters(
+      dict(multiprocessing_options=None),
+      dict(multiprocessing_options=options.MultiprocessingOptions(2)),
+  )
+  def test_close(self, multiprocessing_options):
+    ds = dataset.MapDataset.range(10)
+    it = elastic_iterator.ElasticIterator(
+        ds,
+        2,
+        sharding.NoSharding(),
+        multiprocessing_options=multiprocessing_options,
+    )
+    next(it)
+    it.close()
+    with self.assertRaisesRegex(ValueError, "closed iterator"):
+      next(it)
+
   def test_shard_state_not_implemented(self):
     ds = dataset.MapDataset.range(10).map(lambda x: x + 1)
     it = elastic_iterator.ElasticIterator(ds, 5, sharding.NoSharding())
@@ -503,6 +520,19 @@ class ElasticIterDatasetTest(parameterized.TestCase):
     it2.set_state(inner_state)
 
     self.assertEqual(next(it), next(it2))
+
+  def test_close(self):
+    ds = [
+        dataset.MapDataset.range(i, 10, 2).to_iter_dataset() for i in range(2)
+    ]
+    interleave_ds = interleave.InterleaveIterDataset(ds, cycle_length=2)
+    it = elastic_iterator.ElasticIterator(
+        interleave_ds, global_batch_size=2, shard_options=sharding.NoSharding()
+    )
+    next(it)
+    it.close()
+    with self.assertRaisesRegex(ValueError, "closed iterator"):
+      next(it)
 
   def test_set_shard_states_with_string_keys(self):
     ds = [

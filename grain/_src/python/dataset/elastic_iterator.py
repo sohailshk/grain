@@ -485,7 +485,7 @@ class ElasticIterator(dataset.DatasetIterator):
 
   def close(self) -> None:
     """Closes the base iterator if it was created for backwards compatibility."""
-    if "_base_iterator" in self.__dict__:
+    if "base_iterator" in self.__dict__:
       self.base_iterator.close()
 
   def get_state(self) -> dict[str, Any]:
